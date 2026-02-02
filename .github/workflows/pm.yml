@@ -13,4 +13,5 @@ jobs:
       project_urls: https://github.com/dv-flow/dv-flow-pm,https://github.com/dv-flow/dv-flow-mgr,https://github.com/dv-flow/vscode-dv-flow,https://github.com/dv-flow/dv-flow-librdl,https://github.com/dv-flow/dv-flow.github.io,https://github.com/dv-flow/dv-flow-cmake,https://github.com/dv-flow/dv-flow-libhdlsim,https://github.com/dv-flow/dv-flow-mcp,https://github.com/dv-flow/dv-flow-release,https://github.com/dv-flow/dv-flow-libtest,https://github.com/dv-flow/pytest-dfm,https://github.com/dv-flow/dv-flow-libformal,https://github.com/dv-flow/dv-flow-libsrc,https://github.com/dv-flow/dv-flow-libcc,https://github.com/dv-flow/dv-flow-libedalize,https://github.com/dv-flow/dv-flow-libide,https://github.com/dv-flow/dv-flow-libpss,https://github.com/dv-flow/sphinxcontrib-dv-flow
       prompt_repo: mballance-utils/pm-agent
       prompt_ref: main
-    secrets: inherit
+    secrets:
+      COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
