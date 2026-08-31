@@ -1,0 +1,65 @@
+# dv-flow/dv-flow-pm -- Forgejo Actions.
+#
+# THIS FILE'S ONLY JOB IS TO EXIST. When .forgejo/workflows/ is absent the
+# Forgejo runner falls back to running .github/workflows/ -- measured on this
+# instance, not assumed.
+#
+# There is nothing here worth shadowing. .github/workflows/pm.yml runs on a
+# weekly `schedule:` and workflow_dispatch, never on push, and delegates
+# entirely to mballance-utils/pm-agent's reusable workflow -- which a bare
+# `uses:` here could not resolve anyway, because it resolves against
+# code.forgejo.org rather than github.com.
+#
+# It publishes nothing. The pair exists because the estate's ordering rule is
+# unconditional: a repo enters sync with a .forgejo/workflows/ counterpart in
+# place whether or not it happens to have anything to publish today. The rule is
+# what makes the guarantee checkable rather than a per-repo judgement, and the
+# day someone adds a publish step is exactly the day nobody re-examines the
+# fallback.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check for internal identifiers in tracked files
+      # This repo is published to git.dvkit.org, so anything committed here is
+      # public. Internal host names, tailnet addresses and CGNAT-range IPs must
+      # not appear in tracked files.
+      run: |
+        pattern='perch-char\.ts\.net|\.ts\.net|a9550|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+'
+        if git grep -nIE "$pattern" -- . ':!.forgejo/workflows/ci.yml' ; then
+          echo "::error::internal identifier found in a tracked file (see matches above)"
+          exit 1
+        fi
+        echo "OK: no internal identifiers in tracked files"
+
+    - name: The project-management workflow must stay non-publishing
+      # pm.yml hands a list of repository URLs to an agent workflow. The risk it
+      # carries is not a package upload; it is that the delegation target or the
+      # trigger changes to something that runs on push. Assert both.
+      run: |
+        python3 -c 'import yaml' 2>/dev/null \
+          || python3 -m pip install -q pyyaml \
+          || python3 -m pip install -q --break-system-packages pyyaml \
+          || { echo '::error::cannot install PyYAML'; exit 1; }
+        python3 - <<'PY'
+        import sys, yaml
+        d = yaml.safe_load(open(".github/workflows/pm.yml"))
+        on = d.get("on", d.get(True))   # PyYAML resolves a bare `on:` to True
+        if on is None:
+            sys.exit("::error::pm.yml has no `on:` block")
+        if "push" in on:
+            sys.exit("::error::pm.yml now runs on push; it was schedule/dispatch only, "
+                     "and a mirrored commit must not start it")
+        print("OK: triggers are", ", ".join(sorted(on)))
+        PY
